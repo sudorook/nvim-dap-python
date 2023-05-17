@@ -251,8 +251,29 @@ function M.setup(adapter_python_path, opts)
       name = 'Launch file with arguments';
       program = '${file}';
       args = function()
-        local args_string = vim.fn.input('Arguments: ')
-        return vim.split(args_string, " +")
+        local args_string = vim.fn.input("Arguments: ")
+        local args = {}
+        -- Copied from https://stackoverflow.com/a/28664691
+        local spat, epat, buf, quoted = [=[^(['"])]=], [=[(['"])$]=], nil, nil
+        for str in args_string:gmatch("%S+") do
+          local squoted = str:match(spat)
+          local equoted = str:match(epat)
+          local escaped = str:match([=[(\*)['"]$]=])
+          if squoted and not quoted and not equoted then
+            buf, quoted = str, squoted
+          elseif buf and equoted == quoted and #escaped % 2 == 0 then
+            str, buf, quoted = buf .. " " .. str, nil, nil
+          elseif buf then
+            buf = buf .. " " .. str
+          end
+          if not buf then
+            table.insert(args, (str:gsub(spat, ""):gsub(epat, "")))
+          end
+        end
+        if buf then
+          -- TODO: un-matched quote, so do something...
+        end
+        return args
       end;
       console = opts.console;
       pythonPath = opts.pythonPath,
